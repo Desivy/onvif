@@ -50,7 +50,6 @@ func SendSoapWithDigest(httpClient *http.Client, endpoint, message, username, pa
 	req.Header.Set("Content-Type", "application/soap+xml; charset=utf-8")
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		fmt.Println(err)
 		return resp, errors.Annotate(err, "Post with digest")
 	}
 
@@ -74,6 +73,9 @@ func SendSoapWithDigest(httpClient *http.Client, endpoint, message, username, pa
 	if err != nil {
 		return resp, fmt.Errorf("fail to build digest: %w", err)
 	}
+
+	// Readout body to close the connection
+	resp.Body.Close()
 
 	req.Header.Add("Authorization", cred.String())
 	req.Body = io.NopCloser((bytes.NewBufferString(message)))

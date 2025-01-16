@@ -287,7 +287,7 @@ func (dev Device) callMethodDo(endpoint string, method interface{}) (*http.Respo
 
 	servResp, err := networking.SendSoap(dev.params.HttpClient, endpoint, soap.String())
 	if err != nil {
-		servResp, err = networking.SendSoapWithDigest(new(http.Client), endpoint, soap.String(), dev.params.Username, dev.params.Password)
+		servResp, err = networking.SendSoapWithDigest(dev.params.HttpClient, endpoint, soap.String(), dev.params.Username, dev.params.Password)
 	}
 
 	return servResp, err
@@ -344,7 +344,9 @@ func (dev Device) SendSoap(endpoint string, xmlRequestBody string) (*http.Respon
 
 	servResp, err := networking.SendSoap(dev.params.HttpClient, endpoint, soap.String())
 	if err != nil {
-		servResp, err = networking.SendSoapWithDigest(new(http.Client), endpoint, soap.String(), dev.params.Username, dev.params.Password)
+		// Close server response body to reuse the connection
+		servResp.Body.Close()
+		servResp, err = networking.SendSoapWithDigest(dev.params.HttpClient, endpoint, soap.String(), dev.params.Username, dev.params.Password)
 	}
 
 	return servResp, err
