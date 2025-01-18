@@ -287,6 +287,8 @@ func (dev Device) callMethodDo(endpoint string, method interface{}) (*http.Respo
 
 	servResp, err := networking.SendSoap(dev.params.HttpClient, endpoint, soap.String())
 	if err != nil {
+		// Close server response body to reuse the connection
+		servResp.Body.Close()
 		servResp, err = networking.SendSoapWithDigest(dev.params.HttpClient, endpoint, soap.String(), dev.params.Username, dev.params.Password)
 	}
 
