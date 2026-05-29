@@ -119,7 +119,17 @@ type GetServices struct {
 }
 
 type GetServicesResponse struct {
-	Service []Service `xml:"Service"`
+	Service []GetServicesEntry `xml:"Service"`
+}
+
+// GetServicesEntry is one service entry in a GetServicesResponse.
+// Capabilities.Inner holds the raw capability XML for lazy parsing by callers.
+type GetServicesEntry struct {
+	Namespace    string `xml:"Namespace"`
+	XAddr        string `xml:"XAddr"`
+	Capabilities struct {
+		Inner []byte `xml:",innerxml"`
+	} `xml:"Capabilities"`
 }
 
 type GetServiceCapabilities struct {
