@@ -189,6 +189,26 @@ func NewDevice(params DeviceParams) (*Device, error) {
 	return dev, nil
 }
 
+// NewDeviceRaw constructs a Device without performing any SOAP probe call.
+// The caller is responsible for all service discovery. Aperture's Session.Connect
+// uses this to replace the legacy GetCapabilities probe with GetServices.
+func NewDeviceRaw(params DeviceParams) *Device {
+	dev := new(Device)
+	dev.params = params
+	dev.endpoints = make(map[string]string)
+	scheme := dev.params.Scheme
+	if scheme == "" {
+		scheme = "http"
+	}
+	dev.addEndpoint("Device", scheme+"://"+dev.params.Xaddr+"/onvif/device_service")
+
+	if dev.params.HttpClient == nil {
+		dev.params.HttpClient = new(http.Client)
+	}
+	dev.digestClient = NewDigestClient(dev.params.HttpClient, dev.params.Username, dev.params.Password)
+	return dev
+}
+
 func (dev *Device) addEndpoint(Key, Value string) {
 	//use lowCaseKey
 	//make key having ability to handle Mixed Case for Different vendor devcie (e.g. Events EVENTS, events)

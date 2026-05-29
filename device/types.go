@@ -119,7 +119,7 @@ type GetServices struct {
 }
 
 type GetServicesResponse struct {
-	Service Service
+	Service []Service `xml:"Service"`
 }
 
 type GetServiceCapabilities struct {
