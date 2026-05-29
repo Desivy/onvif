@@ -262,6 +262,41 @@ func TestUnmarshalGetVideoEncoderConfigurationOptionsResponse(t *testing.T) {
 	assert.Equal(t, response.Options[0].ProfilesSupported[1], xsd.String("Main10"))
 }
 
+func TestGetProfiles_EmptyMarshalHasNoOptionalFields(t *testing.T) {
+	b, err := xml.Marshal(GetProfiles{})
+	require.NoError(t, err)
+	got := string(b)
+	assert.NotContains(t, got, "Token", "empty GetProfiles should not contain Token")
+	assert.NotContains(t, got, "Type", "empty GetProfiles should not contain Type")
+}
+
+func TestGetProfiles_TypeFilterMarshal(t *testing.T) {
+	req := GetProfiles{Type: []string{"VideoEncoder"}}
+	b, err := xml.Marshal(req)
+	require.NoError(t, err)
+	assert.Contains(t, string(b), "VideoEncoder")
+}
+
+func TestGetStreamUri_Marshal(t *testing.T) {
+	req := GetStreamUri{
+		Protocol:     "RTSP",
+		ProfileToken: onvif.ReferenceToken("profile_1"),
+	}
+	b, err := xml.Marshal(req)
+	require.NoError(t, err)
+	got := string(b)
+	assert.Contains(t, got, "GetStreamUri")
+	assert.Contains(t, got, "RTSP")
+	assert.Contains(t, got, "profile_1")
+}
+
+func TestGetStreamUriResponse_Unmarshal(t *testing.T) {
+	input := `<GetStreamUriResponse><Uri>rtsp://192.0.2.1:554/stream</Uri></GetStreamUriResponse>`
+	var resp GetStreamUriResponse
+	require.NoError(t, xml.Unmarshal([]byte(input), &resp))
+	assert.Equal(t, "rtsp://192.0.2.1:554/stream", resp.Uri)
+}
+
 func TestMarshalRemoveConfigurationRequest(t *testing.T) {
 	analyticsType := xsd.String("Analytics")
 	analyticsToken := xsd.String("AnalyticsToken")

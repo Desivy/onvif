@@ -35,7 +35,9 @@ type GetVideoEncoderConfigurationOptionsResponse struct {
 }
 
 type GetProfiles struct {
-	XMLName string `xml:"tr2:GetProfiles"`
+	XMLName string                `xml:"tr2:GetProfiles"`
+	Token   *onvif.ReferenceToken `xml:"tr2:Token,omitempty"`
+	Type    []string              `xml:"tr2:Type,omitempty"`
 }
 
 type GetProfilesResponse struct {
