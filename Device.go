@@ -95,6 +95,7 @@ type Device struct {
 
 type DeviceParams struct {
 	Xaddr              string
+	Scheme             string // "http" or "https"; defaults to "http" when empty
 	EndpointRefAddress string
 	Username           string
 	Password           string
@@ -165,7 +166,11 @@ func NewDevice(params DeviceParams) (*Device, error) {
 	dev := new(Device)
 	dev.params = params
 	dev.endpoints = make(map[string]string)
-	dev.addEndpoint("Device", "http://"+dev.params.Xaddr+"/onvif/device_service")
+	scheme := dev.params.Scheme
+	if scheme == "" {
+		scheme = "http"
+	}
+	dev.addEndpoint("Device", scheme+"://"+dev.params.Xaddr+"/onvif/device_service")
 
 	if dev.params.HttpClient == nil {
 		dev.params.HttpClient = new(http.Client)
