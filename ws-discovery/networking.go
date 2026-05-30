@@ -183,3 +183,79 @@ func SendUDPMulticast(msg string, interfaceName string) ([]string, error) {
 	}
 	return responses, nil
 }
+
+// SendProbeWithCallback sends a WS-Discovery Probe on the given interface and
+// calls onMatch for each ProbeMatch UDP response received within timeout.
+// sentAt is captured once before the multicast write so callers can compute
+// response latency. Existing SendProbe / SendUDPMulticast are unchanged.
+func SendProbeWithCallback(
+	interfaceName string,
+	timeout time.Duration,
+	types []string,
+	namespaces map[string]string,
+	onMatch func(raw string, sentAt time.Time, receivedAt time.Time),
+) error {
+	if onMatch == nil {
+		return errors.New("onMatch must not be nil")
+	}
+
+	probeSOAP := BuildProbeMessage(uuid.NewString(), nil, types, namespaces)
+	data := []byte(probeSOAP.String())
+
+	c, err := net.ListenPacket("udp4", "0.0.0.0:0")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if cerr := c.Close(); cerr != nil {
+			log.Printf("Failed to close connection, %s", cerr.Error())
+		}
+	}()
+
+	p := ipv4.NewPacketConn(c)
+
+	group := net.IPv4(239, 255, 255, 250)
+	dest := &net.UDPAddr{IP: group, Port: 3702}
+
+	var iface *net.Interface
+	if interfaceName != "" {
+		iface, err = net.InterfaceByName(interfaceName)
+		if err != nil {
+			return fmt.Errorf("failed to call InterfaceByName for interface %q: %w", interfaceName, err)
+		}
+	}
+
+	if err = p.JoinGroup(iface, &net.UDPAddr{IP: group}); err != nil {
+		return fmt.Errorf("failed to JoinGroup for ws-discovery: %w", err)
+	}
+	if iface != nil {
+		if err = p.SetMulticastInterface(iface); err != nil {
+			return fmt.Errorf("failed to SetMulticastInterface for interface %q: %w", interfaceName, err)
+		}
+		if err = p.SetMulticastTTL(2); err != nil {
+			return fmt.Errorf("failed to SetMulticastTTL: %w", err)
+		}
+	}
+
+	sentAt := time.Now()
+	if _, err = p.WriteTo(data, nil, dest); err != nil {
+		return fmt.Errorf("failed to write to ws-discovery multicast address %s: %w", dest.String(), err)
+	}
+	if err = p.SetReadDeadline(sentAt.Add(timeout)); err != nil {
+		return fmt.Errorf("failed to set read deadline: %w", err)
+	}
+
+	b := make([]byte, bufSize)
+	for {
+		n, _, _, err := p.ReadFrom(b)
+		if err != nil {
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				break
+			}
+			return fmt.Errorf("unexpected error while reading ws-discovery responses: %w", err)
+		}
+		// string(b[0:n]) copies the bytes, so b can be reused safely across iterations.
+		onMatch(string(b[0:n]), sentAt, time.Now())
+	}
+	return nil
+}
