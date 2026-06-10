@@ -1,6 +1,7 @@
 package onvif
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -39,7 +40,13 @@ func NewDigestClient(baseClient *http.Client, username, password string) *Digest
 
 // Do performs an HTTP request using digest authentication.
 func (dc *DigestClient) Do(httpMethod, endpoint, soap string) (*http.Response, error) {
-	req, err := createHttpRequest(httpMethod, endpoint, soap)
+	return dc.DoWithContext(context.Background(), httpMethod, endpoint, soap)
+}
+
+// DoWithContext is Do with request cancellation: the HTTP call aborts as soon
+// as ctx is cancelled instead of waiting for the client timeout.
+func (dc *DigestClient) DoWithContext(ctx context.Context, httpMethod, endpoint, soap string) (*http.Response, error) {
+	req, err := createHttpRequest(ctx, httpMethod, endpoint, soap)
 	if err != nil {
 		return nil, err
 	}

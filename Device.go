@@ -2,6 +2,7 @@ package onvif
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -287,6 +288,13 @@ func (dev *Device) GetEndpointByRequestStruct(requestStruct interface{}) (string
 }
 
 func (dev *Device) SendSoap(endpoint string, xmlRequestBody string) (resp *http.Response, err error) {
+	return dev.SendSoapWithContext(context.Background(), endpoint, xmlRequestBody)
+}
+
+// SendSoapWithContext is SendSoap with request cancellation: the HTTP request
+// aborts as soon as ctx is cancelled, instead of waiting for the http.Client
+// timeout.
+func (dev *Device) SendSoapWithContext(ctx context.Context, endpoint string, xmlRequestBody string) (resp *http.Response, err error) {
 	soap := gosoap.NewEmptySOAP()
 	soap.AddStringBodyContent(xmlRequestBody)
 	soap.AddRootNamespaces(Xlmns)
@@ -298,10 +306,10 @@ func (dev *Device) SendSoap(endpoint string, xmlRequestBody string) (resp *http.
 	}
 
 	if dev.params.AuthMode == DigestAuth || dev.params.AuthMode == Both {
-		resp, err = dev.digestClient.Do(http.MethodPost, endpoint, soap.String())
+		resp, err = dev.digestClient.DoWithContext(ctx, http.MethodPost, endpoint, soap.String())
 	} else {
 		var req *http.Request
-		req, err = createHttpRequest(http.MethodPost, endpoint, soap.String())
+		req, err = createHttpRequest(ctx, http.MethodPost, endpoint, soap.String())
 		if err != nil {
 			return nil, err
 		}
@@ -310,8 +318,8 @@ func (dev *Device) SendSoap(endpoint string, xmlRequestBody string) (resp *http.
 	return resp, err
 }
 
-func createHttpRequest(httpMethod string, endpoint string, soap string) (req *http.Request, err error) {
-	req, err = http.NewRequest(httpMethod, endpoint, bytes.NewBufferString(soap))
+func createHttpRequest(ctx context.Context, httpMethod string, endpoint string, soap string) (req *http.Request, err error) {
+	req, err = http.NewRequestWithContext(ctx, httpMethod, endpoint, bytes.NewBufferString(soap))
 	if err != nil {
 		return nil, err
 	}
@@ -407,7 +415,7 @@ func (dev *Device) SendGetSnapshotRequest(url string) (resp *http.Response, err 
 			return nil, fmt.Errorf("send GetSnapshotRequest failed: %w", err)
 		}
 		var req *http.Request
-		req, err = createHttpRequest(http.MethodGet, url, soap.String())
+		req, err = createHttpRequest(context.Background(), http.MethodGet, url, soap.String())
 		if err != nil {
 			return nil, err
 		}
@@ -422,7 +430,7 @@ func (dev *Device) SendGetSnapshotRequest(url string) (resp *http.Response, err 
 		resp, err = dev.digestClient.Do(http.MethodGet, url, soap.String())
 	default:
 		var req *http.Request
-		req, err = createHttpRequest(http.MethodGet, url, soap.String())
+		req, err = createHttpRequest(context.Background(), http.MethodGet, url, soap.String())
 		if err != nil {
 			return nil, err
 		}
