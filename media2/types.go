@@ -48,6 +48,10 @@ type Profile struct {
 	Token string `xml:"token,attr"`
 	Fixed bool   `xml:"fixed,attr"`
 	Name  string
+	// VideoEncoderConfiguration is present when the device includes encoder
+	// details (resolution/framerate/codec) in the GetProfiles response, which
+	// most Profile T devices do by default. Nil when absent.
+	VideoEncoderConfiguration *onvif.VideoEncoder2Configuration `json:",omitempty"`
 }
 
 type GetAnalyticsConfigurations struct {
