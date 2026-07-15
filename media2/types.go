@@ -48,10 +48,20 @@ type Profile struct {
 	Token string `xml:"token,attr"`
 	Fixed bool   `xml:"fixed,attr"`
 	Name  string
-	// VideoEncoderConfiguration is present when the device includes encoder
-	// details (resolution/framerate/codec) in the GetProfiles response, which
-	// most Profile T devices do by default. Nil when absent.
+	// VideoEncoderConfiguration is the lenient-device shape: encoder details
+	// as a direct child even without a Type filter. Nil when absent.
 	VideoEncoderConfiguration *onvif.VideoEncoder2Configuration `json:",omitempty"`
+	// Configurations is the spec-conformant Media2 shape: configuration
+	// entities are only returned when GetProfiles requests them via Type,
+	// nested under a Configurations element.
+	Configurations *ProfileConfigurations `json:",omitempty"`
+}
+
+// ProfileConfigurations is the subset of the Media2 ConfigurationSet that
+// this client consumes. Extend with VideoSource/AudioEncoder/PTZ as later
+// blocks need them.
+type ProfileConfigurations struct {
+	VideoEncoder *onvif.VideoEncoder2Configuration `json:",omitempty"`
 }
 
 type GetAnalyticsConfigurations struct {
