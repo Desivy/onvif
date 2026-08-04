@@ -62,6 +62,7 @@ type Profile struct {
 // blocks need them.
 type ProfileConfigurations struct {
 	VideoEncoder *onvif.VideoEncoder2Configuration `json:",omitempty"`
+	PTZ          *onvif.PTZConfiguration           `json:",omitempty"`
 }
 
 type GetAnalyticsConfigurations struct {
