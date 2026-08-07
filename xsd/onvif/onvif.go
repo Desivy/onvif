@@ -472,14 +472,14 @@ type VideoRateControl2 struct {
 	FrameRateLimit   *xsd.Float   `json:",omitempty"`
 	EncodingInterval *xsd.Int     `json:",omitempty"`
 	BitrateLimit     *xsd.Int     `json:",omitempty"`
-	ConstantBitRate  *xsd.Boolean `json:",omitempty"`
+	ConstantBitRate  *xsd.Boolean `xml:"ConstantBitRate,attr,omitempty" json:",omitempty"`
 }
 
 type VideoRateControl2Request struct {
 	FrameRateLimit   *xsd.Float   `xml:"onvif:FrameRateLimit,omitempty"`
 	EncodingInterval *xsd.Int     `xml:"onvif:EncodingInterval,omitempty"`
 	BitrateLimit     *xsd.Int     `xml:"onvif:BitrateLimit,omitempty"`
-	ConstantBitRate  *xsd.Boolean `xml:"onvif:ConstantBitRate,omitempty"`
+	ConstantBitRate  *xsd.Boolean `xml:"ConstantBitRate,attr,omitempty"`
 }
 
 type Mpeg4Configuration struct {
@@ -513,8 +513,8 @@ type VideoEncoder2Configuration struct {
 	RateControl *VideoRateControl2      `json:",omitempty"`
 	Multicast   *MulticastConfiguration `json:",omitempty"`
 	Quality     float64                 `json:",omitempty"`
-	GovLength   *xsd.Int                `json:",omitempty"`
-	Profile     *xsd.String             `json:",omitempty"`
+	GovLength   *xsd.Int                `xml:"GovLength,attr,omitempty" json:",omitempty"`
+	Profile     *xsd.String             `xml:"Profile,attr,omitempty" json:",omitempty"`
 }
 
 type VideoEncoder2ConfigurationRequest struct {
@@ -524,8 +524,8 @@ type VideoEncoder2ConfigurationRequest struct {
 	RateControl *VideoRateControl2Request      `xml:"onvif:RateControl,omitempty"`
 	Multicast   *MulticastConfigurationRequest `xml:"onvif:Multicast,omitempty"`
 	Quality     *xsd.Float                     `xml:"onvif:Quality,omitempty"`
-	GovLength   *xsd.Int                       `xml:"onvif:GovLength,omitempty"`
-	Profile     *xsd.String                    `xml:"onvif:Profile,omitempty"`
+	GovLength   *xsd.Int                       `xml:"GovLength,attr,omitempty"`
+	Profile     *xsd.String                    `xml:"Profile,attr,omitempty"`
 }
 
 type MulticastConfiguration struct {
@@ -910,9 +910,18 @@ type VideoEncoder2ConfigurationOptions struct {
 	BitrateRange             *IntRange         `json:",omitempty"`
 	FrameRateRange           *FloatRange       `json:",omitempty"`
 	EncodingIntervalRange    *IntRange         `json:",omitempty"`
-	GovLengthRange           *IntRange         `json:",omitempty"`
-	ProfilesSupported        []xsd.String      `json:",omitempty"`
-	ConstantBitRateSupported *xsd.Boolean      `json:",omitempty"`
+	ConstantBitRateSupported *xsd.Boolean      `xml:"ConstantBitRateSupported,attr,omitempty" json:",omitempty"`
+	// FrameRatesSupported is the discrete space-separated list a Profile-T
+	// device advertises as an attribute ("30 25 20 15 12 10"). Kept raw —
+	// callers parse it; the fork has no attr-list type.
+	FrameRatesSupported xsd.String `xml:"FrameRatesSupported,attr,omitempty" json:",omitempty"`
+	// GovLengthRange is a space-separated "min max" pair advertised as an
+	// attribute ("1 300"), not the Min/Max element pair *IntRange models.
+	// Kept raw — callers parse it.
+	GovLengthRange xsd.String `xml:"GovLengthRange,attr,omitempty" json:",omitempty"`
+	// ProfilesSupported is a space-separated list advertised as an attribute
+	// ("Main Main10"), not a repeated element. Kept raw — callers parse it.
+	ProfilesSupported xsd.String `xml:"ProfilesSupported,attr,omitempty" json:",omitempty"`
 }
 
 type AudioSourceConfigurationOptions struct {

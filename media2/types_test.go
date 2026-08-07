@@ -149,14 +149,16 @@ func TestMarshalSetVideoEncoderConfigurationRequest(t *testing.T) {
 			Profile:   &profile,
 		},
 	}
-	expected := fmt.Sprintf(`<tr2:SetVideoEncoderConfiguration><tr2:Configuration token="%s"><onvif:Encoding>%s</onvif:Encoding><onvif:Resolution><onvif:Width>%d</onvif:Width><onvif:Height>%d</onvif:Height></onvif:Resolution><onvif:RateControl><onvif:FrameRateLimit>%g</onvif:FrameRateLimit></onvif:RateControl><onvif:GovLength>%d</onvif:GovLength><onvif:Profile>%s</onvif:Profile></tr2:Configuration></tr2:SetVideoEncoderConfiguration>`,
+	// GovLength and Profile are Media2 attributes of tr2:Configuration, not
+	// child elements — see xsd/onvif.VideoEncoder2ConfigurationRequest.
+	expected := fmt.Sprintf(`<tr2:SetVideoEncoderConfiguration><tr2:Configuration token="%s" GovLength="%d" Profile="%s"><onvif:Encoding>%s</onvif:Encoding><onvif:Resolution><onvif:Width>%d</onvif:Width><onvif:Height>%d</onvif:Height></onvif:Resolution><onvif:RateControl><onvif:FrameRateLimit>%g</onvif:FrameRateLimit></onvif:RateControl></tr2:Configuration></tr2:SetVideoEncoderConfiguration>`,
 		request.Configuration.Token,
+		*request.Configuration.GovLength,
+		*request.Configuration.Profile,
 		*request.Configuration.Encoding,
 		*request.Configuration.Resolution.Width,
 		*request.Configuration.Resolution.Height,
-		*request.Configuration.RateControl.FrameRateLimit,
-		*request.Configuration.GovLength,
-		*request.Configuration.Profile)
+		*request.Configuration.RateControl.FrameRateLimit)
 
 	data, err := xml.Marshal(request)
 	require.NoError(t, err)
@@ -186,23 +188,23 @@ func TestUnmarshalGetVideoEncoderConfigurationsResponse(t *testing.T) {
 	config2Ref := "enc_2"
 	config2Encoding := xsd.String("H264")
 
+	// GovLength and Profile are Media2 attributes of tr2:Configurations, not
+	// child elements — see xsd/onvif.VideoEncoder2Configuration.
 	responseData := fmt.Sprintf(`
 		<tr2:GetVideoEncoderConfigurationsResponse>
-			<tr2:Configurations token="%s">
+			<tr2:Configurations token="%s" GovLength="%d" Profile="%s">
 				<tt:Name>%s</tt:Name>
 				<tt:Encoding>%s</tt:Encoding>
 				<tt:Resolution>
 					<tt:Width>%d</tt:Width>
 					<tt:Height>%d</tt:Height>
 				</tt:Resolution>
-				<tt:GovLength>%d</tt:GovLength>
-				<tt:Profile>%s</tt:Profile>
 			</tr2:Configurations>
 			<tr2:Configurations token="%s">
 				<tt:Encoding>%s</tt:Encoding>
 			</tr2:Configurations>
 		</tr2:GetVideoEncoderConfigurationsResponse>
-	`, config1Ref, config1Name, config1Encoding, config1Width, config1Height, config1GovLength, config1Profile,
+	`, config1Ref, config1GovLength, config1Profile, config1Name, config1Encoding, config1Width, config1Height,
 		config2Ref, config2Encoding)
 
 	response := &GetVideoEncoderConfigurationsResponse{}
@@ -227,20 +229,17 @@ func TestUnmarshalGetVideoEncoderConfigurationOptionsResponse(t *testing.T) {
 	width := xsd.Int(1920)
 	height := xsd.Int(1080)
 
+	// GovLengthRange and ProfilesSupported are Media2 attributes of
+	// tr2:Options (space-separated lists), not child elements — see
+	// xsd/onvif.VideoEncoder2ConfigurationOptions.
 	responseData := fmt.Sprintf(`
 		<tr2:GetVideoEncoderConfigurationOptionsResponse>
-			<tr2:Options>
+			<tr2:Options GovLengthRange="1 300" ProfilesSupported="Main Main10">
 				<tt:Encoding>%s</tt:Encoding>
 				<tt:ResolutionsAvailable>
 					<tt:Width>%d</tt:Width>
 					<tt:Height>%d</tt:Height>
 				</tt:ResolutionsAvailable>
-				<tt:GovLengthRange>
-					<tt:Min>1</tt:Min>
-					<tt:Max>300</tt:Max>
-				</tt:GovLengthRange>
-				<tt:ProfilesSupported>Main</tt:ProfilesSupported>
-				<tt:ProfilesSupported>Main10</tt:ProfilesSupported>
 			</tr2:Options>
 		</tr2:GetVideoEncoderConfigurationOptionsResponse>
 	`, encoding, width, height)
@@ -254,12 +253,8 @@ func TestUnmarshalGetVideoEncoderConfigurationOptionsResponse(t *testing.T) {
 	require.Len(t, response.Options[0].ResolutionsAvailable, 1)
 	assert.Equal(t, response.Options[0].ResolutionsAvailable[0].Width, &width)
 	assert.Equal(t, response.Options[0].ResolutionsAvailable[0].Height, &height)
-	require.NotNil(t, response.Options[0].GovLengthRange)
-	assert.Equal(t, response.Options[0].GovLengthRange.Min, 1)
-	assert.Equal(t, response.Options[0].GovLengthRange.Max, 300)
-	require.Len(t, response.Options[0].ProfilesSupported, 2)
-	assert.Equal(t, response.Options[0].ProfilesSupported[0], xsd.String("Main"))
-	assert.Equal(t, response.Options[0].ProfilesSupported[1], xsd.String("Main10"))
+	assert.Equal(t, string(response.Options[0].GovLengthRange), "1 300")
+	assert.Equal(t, string(response.Options[0].ProfilesSupported), "Main Main10")
 }
 
 func TestGetProfiles_EmptyMarshalHasNoOptionalFields(t *testing.T) {
