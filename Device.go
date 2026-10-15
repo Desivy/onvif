@@ -291,20 +291,24 @@ func (dev *Device) SendSoap(endpoint string, xmlRequestBody string) (resp *http.
 	return dev.SendSoapWithContext(context.Background(), endpoint, xmlRequestBody)
 }
 
-// SendSoapWithContext is SendSoap with request cancellation: the HTTP request
-// aborts as soon as ctx is cancelled, instead of waiting for the http.Client
-// timeout.
-func (dev *Device) SendSoapWithContext(ctx context.Context, endpoint string, xmlRequestBody string) (resp *http.Response, err error) {
+// SendSoapWithContextHeaders is SendSoapWithContext with extra SOAP header
+// entries — already-serialised XML fragments, each exactly one element —
+// appended to the Header after WS-Security. Used for WS-Addressing
+// reference parameters and wsa:Action.
+func (dev *Device) SendSoapWithContextHeaders(ctx context.Context, endpoint string, xmlRequestBody string, headers ...string) (resp *http.Response, err error) {
 	soap := gosoap.NewEmptySOAP()
 	soap.AddStringBodyContent(xmlRequestBody)
 	soap.AddRootNamespaces(Xlmns)
 	if dev.params.AuthMode == UsernameTokenAuth || dev.params.AuthMode == Both {
-		err = soap.AddWSSecurity(dev.params.Username, dev.params.Password)
-		if err != nil {
+		if err = soap.AddWSSecurity(dev.params.Username, dev.params.Password); err != nil {
 			return nil, fmt.Errorf("send soap request failed: %w", err)
 		}
 	}
-
+	for _, h := range headers {
+		if err = soap.AddStringHeaderContent(h); err != nil {
+			return nil, fmt.Errorf("send soap request failed: header: %w", err)
+		}
+	}
 	if dev.params.AuthMode == DigestAuth || dev.params.AuthMode == Both {
 		resp, err = dev.digestClient.DoWithContext(ctx, http.MethodPost, endpoint, soap.String())
 	} else {
@@ -316,6 +320,13 @@ func (dev *Device) SendSoapWithContext(ctx context.Context, endpoint string, xml
 		resp, err = dev.params.HttpClient.Do(req)
 	}
 	return resp, err
+}
+
+// SendSoapWithContext is SendSoap with request cancellation: the HTTP request
+// aborts as soon as ctx is cancelled, instead of waiting for the http.Client
+// timeout.
+func (dev *Device) SendSoapWithContext(ctx context.Context, endpoint string, xmlRequestBody string) (*http.Response, error) {
+	return dev.SendSoapWithContextHeaders(ctx, endpoint, xmlRequestBody)
 }
 
 func createHttpRequest(ctx context.Context, httpMethod string, endpoint string, soap string) (req *http.Request, err error) {
