@@ -2,6 +2,7 @@ package gosoap
 
 import (
 	"encoding/xml"
+	"errors"
 	"log"
 
 	"github.com/beevik/etree"
@@ -138,6 +139,9 @@ func (msg *SoapMessage) AddStringHeaderContent(data string) error {
 	}
 
 	element := doc.Root()
+	if element == nil {
+		return errors.New("gosoap: header fragment has no root element")
+	}
 
 	doc = etree.NewDocument()
 	if err := doc.ReadFromString(msg.String()); err != nil {

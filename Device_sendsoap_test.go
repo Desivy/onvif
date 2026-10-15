@@ -3,8 +3,10 @@ package onvif
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -54,5 +56,30 @@ func TestDevice_SendSoapWithContext_CancelAbortsInFlightRequest(t *testing.T) {
 				t.Fatalf("SendSoapWithContext took %v after cancel, want prompt return", elapsed)
 			}
 		})
+	}
+}
+
+func TestSendSoapWithContextHeadersPlacesHeadersAfterSecurity(t *testing.T) {
+	var got string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		got = string(b)
+		w.Header().Set("Content-Type", "application/soap+xml")
+		_, _ = w.Write([]byte(`<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Body/></s:Envelope>`))
+	}))
+	defer srv.Close()
+	dev := NewDeviceRaw(DeviceParams{Xaddr: srv.Listener.Addr().String(), Username: "u", Password: "p", AuthMode: UsernameTokenAuth, HttpClient: srv.Client()})
+	resp, err := dev.SendSoapWithContextHeaders(context.Background(), srv.URL, "<x/>", `<a:Id xmlns:a="urn:x">7</a:Id>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	sec := strings.Index(got, "Security")
+	id := strings.Index(got, "<a:Id")
+	if sec < 0 || id < 0 || id < sec {
+		t.Fatalf("header order wrong or missing: %s", got)
+	}
+	if !strings.Contains(got, "<x/>") {
+		t.Fatalf("body missing: %s", got)
 	}
 }
